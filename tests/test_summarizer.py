@@ -125,9 +125,9 @@ class TestSummarizeBatch:
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
 
-        with pytest.raises(ValueError, match="没有 JSON"):
+        with pytest.raises(ValueError, match="No JSON files"):
             summarize_batch(empty_dir)
 
     def test_raises_on_nonexistent_directory(self):
-        with pytest.raises(ValueError, match="目录不存在"):
+        with pytest.raises(ValueError, match="Directory does not exist"):
             summarize_batch(Path("/nonexistent/dir"))

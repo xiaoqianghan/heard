@@ -10,7 +10,7 @@ from heard.output import write_transcript, format_transcript_text, load_transcri
 from heard.summarizer import summarize_single, summarize_batch
 from heard.transcriber import DEFAULT_MODEL, DEFAULT_LANGUAGE, WhisperTranscriber
 
-app = typer.Typer(help="Heard — 视频语音转录工具")
+app = typer.Typer(help="Heard — Video speech transcription tool")
 console = Console()
 
 
@@ -21,10 +21,10 @@ def main() -> None:
 
 @app.command()
 def transcribe(
-    video: Annotated[Path, typer.Argument(help="视频文件路径")],
-    output: Annotated[Path | None, typer.Option("--output", "-o", help="输出 JSON 文件路径")] = None,
-    model: Annotated[str, typer.Option("--model", "-m", help="Whisper 模型名称")] = DEFAULT_MODEL,
-    language: Annotated[str, typer.Option("--language", "-l", help="转录语言")] = DEFAULT_LANGUAGE,
+    video: Annotated[Path, typer.Argument(help="Path to the video file")],
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output JSON file path")] = None,
+    model: Annotated[str, typer.Option("--model", "-m", help="Whisper model name")] = DEFAULT_MODEL,
+    language: Annotated[str, typer.Option("--language", "-l", help="Transcription language")] = DEFAULT_LANGUAGE,
 ) -> None:
     video = video.resolve()
 
@@ -38,9 +38,9 @@ def transcribe(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("提取音频...", total=None)
+            task = progress.add_task("Extracting audio...", total=None)
             audio_path = extract_audio(video)
-            progress.update(task, description="转录中...")
+            progress.update(task, description="Transcribing...")
 
             try:
                 transcriber = WhisperTranscriber(model=model, language=language)
@@ -48,26 +48,26 @@ def transcribe(
             finally:
                 audio_path.unlink(missing_ok=True)
 
-            progress.update(task, description="写入输出...")
+            progress.update(task, description="Writing output...")
             write_transcript(transcript, output)
-            progress.update(task, description=f"完成! 输出: {output}")
+            progress.update(task, description=f"Done! Output: {output}")
 
-        console.print(f"\n[green]转录完成[/green] — {len(transcript.segments)} 个片段 → {output}")
+        console.print(f"\n[green]Transcription complete[/green] — {len(transcript.segments)} segments → {output}")
 
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
-        console.print(f"[red]错误[/red]: {exc}")
+        console.print(f"[red]Error[/red]: {exc}")
         raise typer.Exit(code=1)
 
 
 @app.command()
 def export(
-    json_file: Annotated[Path, typer.Argument(help="转录 JSON 文件路径")],
-    output: Annotated[Path | None, typer.Option("--output", "-o", help="输出文件路径")] = None,
+    json_file: Annotated[Path, typer.Argument(help="Path to the transcript JSON file")],
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output file path")] = None,
 ) -> None:
     json_file = json_file.resolve()
 
     if not json_file.exists():
-        console.print(f"[red]错误[/red]: 文件不存在 — {json_file}")
+        console.print(f"[red]Error[/red]: File not found — {json_file}")
         raise typer.Exit(code=1)
 
     transcript = load_transcript(json_file)
@@ -80,42 +80,42 @@ def export(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(text, encoding="utf-8")
 
-    console.print(f"[green]导出完成[/green] — {len(transcript.segments)} 个片段 → {output}")
+    console.print(f"[green]Export complete[/green] — {len(transcript.segments)} segments → {output}")
 
 
 @app.command()
 def summarize(
-    path: Annotated[Path, typer.Argument(help="转录 JSON 文件路径或目录")],
-    output_dir: Annotated[Path | None, typer.Option("--output-dir", "-o", help="输出目录")] = None,
-    batch: Annotated[bool, typer.Option("--batch", "-b", help="批量处理目录下所有 JSON 文件")] = False,
+    path: Annotated[Path, typer.Argument(help="Path to a transcript JSON file or directory")],
+    output_dir: Annotated[Path | None, typer.Option("--output-dir", "-o", help="Output directory")] = None,
+    batch: Annotated[bool, typer.Option("--batch", "-b", help="Batch process all JSON files in directory")] = False,
 ) -> None:
-    """使用 Claude 从转录中提取核心概念与关键词。"""
+    """Extract core concepts and keywords from transcripts using Claude."""
     path = path.resolve()
 
     if not path.exists():
-        console.print(f"[red]错误[/red]: 路径不存在 — {path}")
+        console.print(f"[red]Error[/red]: Path not found — {path}")
         raise typer.Exit(code=1)
 
     try:
         if batch:
             if not path.is_dir():
-                console.print("[red]错误[/red]: 批量模式需要指定目录")
+                console.print("[red]Error[/red]: Batch mode requires a directory")
                 raise typer.Exit(code=1)
 
-            console.print(f"[bold]批量处理[/bold]: {path}")
+            console.print(f"[bold]Batch processing[/bold]: {path}")
             paths = summarize_batch(path, output_dir=output_dir)
-            console.print(f"\n[green]完成[/green] — 生成 {len(paths)} 个文件")
+            console.print(f"\n[green]Done[/green] — generated {len(paths)} files")
         else:
             if path.is_dir():
-                console.print("[red]错误[/red]: 单文件模式需要指定 .json 文件（目录请使用 --batch）")
+                console.print("[red]Error[/red]: Single-file mode requires a .json file (use --batch for directories)")
                 raise typer.Exit(code=1)
 
-            console.print(f"[bold]处理[/bold]: {path.name}")
+            console.print(f"[bold]Processing[/bold]: {path.name}")
             output = summarize_single(path, output_dir=output_dir)
-            console.print(f"[green]完成[/green] → {output}")
+            console.print(f"[green]Done[/green] → {output}")
 
     except (FileNotFoundError, ValueError) as exc:
-        console.print(f"[red]错误[/red]: {exc}")
+        console.print(f"[red]Error[/red]: {exc}")
         raise typer.Exit(code=1)
 
 

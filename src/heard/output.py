@@ -15,14 +15,14 @@ def format_transcript_text(transcript: Transcript) -> str:
     minutes, seconds = divmod(int(transcript.duration), 60)
     hours, minutes = divmod(minutes, 60)
     if hours > 0:
-        duration_str = f"{hours}时{minutes}分{seconds}秒"
+        duration_str = f"{hours}h {minutes}m {seconds}s"
     else:
-        duration_str = f"{minutes}分{seconds}秒"
+        duration_str = f"{minutes}m {seconds}s"
 
     lines = [
         f"# {transcript.video}",
         "",
-        f"时长: {duration_str} | 语言: {transcript.language} | 模型: {transcript.model}",
+        f"Duration: {duration_str} | Language: {transcript.language} | Model: {transcript.model}",
         "",
         "---",
         "",

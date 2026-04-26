@@ -6,49 +6,49 @@ from pathlib import Path
 from heard.output import format_transcript_text, load_transcript
 from heard.transcriber import Transcript
 
-SUMMARY_SYSTEM_PROMPT = """你是一个课程学习助手。根据视频转录文本，提取核心概念与关键词。
+SUMMARY_SYSTEM_PROMPT = """You are a course learning assistant. Extract core concepts and keywords from video transcripts.
 
-输出格式（严格使用以下 Markdown 结构）：
+Output format (strictly use the following Markdown structure):
 
-# {视频文件名}
+# {video filename}
 
-## 概要
-{一句话概括视频主题}
+## Summary
+{one-sentence summary of the video topic}
 
-## 核心概念
-- {概念1}：{简要说明}
-- {概念2}：{简要说明}
+## Core Concepts
+- {concept 1}: {brief explanation}
+- {concept 2}: {brief explanation}
 
-## 关键词
-{关键词1}, {关键词2}, {关键词3}
+## Keywords
+{keyword 1}, {keyword 2}, {keyword 3}
 
-要求：
-- 概要控制在1-2句话
-- 核心概念列出3-8个，每个附一句话说明
-- 关键词用逗号分隔，列出5-10个
-- 用中文输出"""
+Requirements:
+- Summary should be 1-2 sentences
+- List 3-8 core concepts, each with a one-sentence explanation
+- Keywords should be comma-separated, list 5-10
+- Output in Chinese"""
 
-OVERVIEW_SYSTEM_PROMPT = """你是一个课程学习助手。根据一系列视频摘要，生成课程总览。
+OVERVIEW_SYSTEM_PROMPT = """You are a course learning assistant. Generate a course overview based on a series of video summaries.
 
-输出格式：
+Output format:
 
-# 课程总览
+# Course Overview
 
-## 课程结构
-{对课程整体内容和结构的描述}
+## Course Structure
+{description of the overall course content and structure}
 
-## 各视频概要
-{按顺序列出每个视频的一句话概要}
+## Video Summaries
+{list one-sentence summaries for each video in order}
 
-## 推荐学习顺序
-{如果有依赖关系，给出建议的学习顺序}
+## Recommended Learning Order
+{suggest a learning order if there are dependencies}
 
-## 关联主题
-{指出不同视频之间有关联的主题或概念}
+## Related Topics
+{identify related themes or concepts across different videos}
 
-要求：
-- 用中文输出
-- 结构清晰，便于快速浏览"""
+Requirements:
+- Output in Chinese
+- Clear structure for quick browsing"""
 
 MAX_CHUNK_SIZE = 50000
 
@@ -94,7 +94,7 @@ async def _call_claude(system_prompt: str, user_prompt: str) -> str:
         if isinstance(event, ResultMessage) and event.result:
             result_text = event.result
     if not result_text:
-        raise RuntimeError("Claude 未返回有效结果，请检查 claude-code-sdk 配置")
+        raise RuntimeError("Claude returned no valid result. Check your claude-code-sdk configuration.")
     return result_text
 
 
@@ -105,19 +105,19 @@ async def _summarize_text(text: str) -> str:
     partials = await asyncio.gather(
         *[_call_claude(SUMMARY_SYSTEM_PROMPT, ch) for ch in chunks]
     )
-    merged = "以下是视频各部分的摘要，请合并为一份完整的摘要：\n\n" + "\n---\n".join(partials)
+    merged = "Below are summaries of different parts of the video. Please merge them into a single complete summary:\n\n" + "\n---\n".join(partials)
     return await _call_claude(SUMMARY_SYSTEM_PROMPT, merged)
 
 
 async def _summarize_file(json_path: Path, output_dir: Path | None = None) -> tuple[Path, str]:
     json_path = json_path.resolve()
     if not json_path.exists():
-        raise FileNotFoundError(f"转录文件不存在: {json_path}")
+        raise FileNotFoundError(f"Transcript file not found: {json_path}")
 
     transcript = load_transcript(json_path)
     text = _extract_text(transcript)
     if not text.strip():
-        raise ValueError(f"转录文件内容为空: {json_path}")
+        raise ValueError(f"Transcript file is empty: {json_path}")
 
     summary = await _summarize_text(text)
 
@@ -138,11 +138,11 @@ def summarize_single(json_path: Path, output_dir: Path | None = None) -> Path:
 async def _summarize_batch_async(directory: Path, output_dir: Path | None = None) -> list[Path]:
     directory = directory.resolve()
     if not directory.is_dir():
-        raise ValueError(f"目录不存在: {directory}")
+        raise ValueError(f"Directory does not exist: {directory}")
 
     json_files = sorted(directory.glob("*.json"))
     if not json_files:
-        raise ValueError(f"目录中没有 JSON 文件: {directory}")
+        raise ValueError(f"No JSON files found in directory: {directory}")
 
     if output_dir is None:
         output_dir = directory / "summaries"
@@ -158,7 +158,7 @@ async def _summarize_batch_async(directory: Path, output_dir: Path | None = None
         filename = path.stem.replace(".summary", "")
         overview_parts.append(f"### {filename}\n\n{text}")
 
-    overview_prompt = "以下是课程中各视频的摘要：\n\n" + "\n---\n".join(overview_parts)
+    overview_prompt = "Below are summaries of each video in the course:\n\n" + "\n---\n".join(overview_parts)
     overview = await _call_claude(OVERVIEW_SYSTEM_PROMPT, overview_prompt)
 
     overview_path = output_dir / "course-overview.md"
