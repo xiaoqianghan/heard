@@ -41,6 +41,9 @@ heard = "heard.cli:app"
 dev = [
     "pytest>=9.0.3",
 ]
+summarize = [
+    "claude-code-sdk",
+]
 
 [build-system]
 requires = ["hatchling"]
