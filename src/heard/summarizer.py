@@ -65,7 +65,11 @@ def _extract_text_from_transcript(transcript: Transcript) -> str:
 
 
 def _chunk_text(text: str, max_size: int = MAX_CHUNK_SIZE) -> list[str]:
-    """Split text into chunks at paragraph boundaries, respecting max_size."""
+    """Split text into chunks at paragraph boundaries, respecting max_size.
+
+    Note: Single paragraphs exceeding max_size will pass through unsplit,
+    since there is no paragraph boundary to split on within them.
+    """
     if not text:
         return []
     if len(text) <= max_size:
@@ -100,6 +104,8 @@ async def _call_claude_async(system_prompt: str, user_prompt: str) -> str:
     async for event in query(prompt=user_prompt, options=options):
         if isinstance(event, ResultMessage) and event.result:
             result_text = event.result
+    if not result_text:
+        raise RuntimeError("Claude 未返回有效结果，请检查 claude-code-sdk 配置")
     return result_text
 
 
@@ -174,9 +180,6 @@ class Summarizer:
         overview_prompt = "以下是课程中各视频的摘要：\n\n" + "\n---\n".join(overview_parts)
         overview = _call_claude(OVERVIEW_SYSTEM_PROMPT, overview_prompt)
 
-        if output_dir is None:
-            output_dir = directory / "summaries"
-        output_dir.mkdir(parents=True, exist_ok=True)
         overview_path = output_dir / "course-overview.md"
         overview_path.write_text(overview, encoding="utf-8")
         summary_paths.append(overview_path)
