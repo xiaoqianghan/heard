@@ -29,9 +29,17 @@ heard transcribe video.mp4 -o result.json
 # 切换模型
 heard transcribe video.mp4 --model medium
 heard transcribe video.mp4 --model large-v3-turbo
+
+# 导出为纯文本（用于 AI 总结、学习计划等）
+heard export transcript.json
+
+# 指定输出路径
+heard export transcript.json -o output.txt
 ```
 
 ## 输出格式
+
+### JSON（transcribe 默认输出）
 
 ```json
 {
@@ -49,6 +57,20 @@ heard transcribe video.mp4 --model large-v3-turbo
     }
   ]
 }
+```
+
+### 纯文本（export 输出）
+
+```
+# lesson01.mp4
+
+时长: 60分0秒 | 语言: zh | 模型: large-v3-turbo
+
+---
+
+今天我们来学习 Python 的基础语法...
+
+[按停顿自动分段，适合喂给 AI 做总结和学习计划]
 ```
 
 ## 开发
