@@ -32,7 +32,9 @@ def extract_audio(video_path: Path) -> Path:
 
     check_ffmpeg()
 
-    wav_path = Path(tempfile.mktemp(suffix=".wav"))
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+    tmp.close()
+    wav_path = Path(tmp.name)
 
     (
         ffmpeg.input(str(video_path))
