@@ -50,7 +50,7 @@ def transcribe(
             write_transcript(transcript, output)
             progress.update(task, description=f"完成! 输出: {output}")
 
-    except (FileNotFoundError, ValueError) as exc:
+    except (FileNotFoundError, ValueError, RuntimeError) as exc:
         console.print(f"[red]错误[/red]: {exc}")
         raise typer.Exit(code=1)
 

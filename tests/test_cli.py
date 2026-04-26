@@ -1,7 +1,5 @@
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from heard.cli import app
