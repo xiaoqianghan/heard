@@ -1,6 +1,4 @@
 import json
-from dataclasses import asdict
-from pathlib import Path
 
 from heard.output import write_transcript, format_transcript
 from heard.transcriber import Segment, Transcript
