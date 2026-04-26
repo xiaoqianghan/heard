@@ -5,10 +5,11 @@ from unittest.mock import AsyncMock, patch
 from pathlib import Path
 
 from heard.summarizer import (
-    Summarizer,
-    _call_claude_async,
+    _call_claude,
     _chunk_text,
-    _extract_text_from_transcript,
+    _extract_text,
+    summarize_single,
+    summarize_batch,
 )
 from heard.transcriber import Segment, Transcript
 
@@ -25,13 +26,13 @@ class TestExtractText:
                 Segment(id=1, start=5.5, end=10.0, text="第二段内容", confidence=0.85),
             ],
         )
-        result = _extract_text_from_transcript(t)
+        result = _extract_text(t)
         assert "第一段内容" in result
         assert "第二段内容" in result
 
     def test_empty_transcript(self):
         t = Transcript(video="test.mp4", duration=0.0, language="zh", model="large-v3-turbo")
-        result = _extract_text_from_transcript(t)
+        result = _extract_text(t)
         assert result == ""
 
 
@@ -52,7 +53,7 @@ class TestChunkText:
         assert result == []
 
 
-class TestSummarizer:
+class TestSummarizeSingle:
     def _make_transcript(self):
         return Transcript(
             video="lesson01.mp4",
@@ -72,12 +73,11 @@ class TestSummarizer:
         json_path = tmp_path / "lesson01.json"
         write_transcript(transcript, json_path)
 
-        with patch("heard.summarizer._call_claude_async", new_callable=AsyncMock) as mock_call:
+        with patch("heard.summarizer._call_claude", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = (
                 "# lesson01.mp4\n\n## 概要\nPython基础\n\n## 核心概念\n- 类型\n\n## 关键词\nPython"
             )
-            summarizer = Summarizer()
-            output = summarizer.summarize_single(json_path, output_dir=tmp_path / "summaries")
+            output = summarize_single(json_path, output_dir=tmp_path / "summaries")
 
         assert output.exists()
         content = output.read_text(encoding="utf-8")
@@ -90,10 +90,9 @@ class TestSummarizer:
         json_path = tmp_path / "lesson01.json"
         write_transcript(transcript, json_path)
 
-        with patch("heard.summarizer._call_claude_async", new_callable=AsyncMock) as mock_call:
+        with patch("heard.summarizer._call_claude", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = "# mock summary"
-            summarizer = Summarizer()
-            output = summarizer.summarize_single(json_path, output_dir=tmp_path)
+            output = summarize_single(json_path, output_dir=tmp_path)
 
         mock_call.assert_called_once()
         call_args = mock_call.call_args[0][1]  # user_prompt is the second positional arg
@@ -114,10 +113,9 @@ class TestSummarizeBatch:
             )
             write_transcript(t, tmp_path / f"lesson{i:02d}.json")
 
-        with patch("heard.summarizer._call_claude_async", new_callable=AsyncMock) as mock_call:
+        with patch("heard.summarizer._call_claude", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = "# mock summary"
-            summarizer = Summarizer()
-            paths = summarizer.summarize_batch(tmp_path, output_dir=tmp_path / "summaries")
+            paths = summarize_batch(tmp_path, output_dir=tmp_path / "summaries")
 
         assert len(paths) == 4  # 3 summaries + 1 overview
         summary_files = [p for p in paths if p.name != "course-overview.md"]
@@ -129,11 +127,9 @@ class TestSummarizeBatch:
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
 
-        summarizer = Summarizer()
         with pytest.raises(ValueError, match="没有 JSON"):
-            summarizer.summarize_batch(empty_dir)
+            summarize_batch(empty_dir)
 
     def test_raises_on_nonexistent_directory(self):
-        summarizer = Summarizer()
         with pytest.raises(ValueError, match="目录不存在"):
-            summarizer.summarize_batch(Path("/nonexistent/dir"))
+            summarize_batch(Path("/nonexistent/dir"))

@@ -7,7 +7,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from heard.audio import extract_audio
 from heard.output import write_transcript, format_transcript_text, load_transcript
-from heard.summarizer import Summarizer
+from heard.summarizer import summarize_single, summarize_batch
 from heard.transcriber import DEFAULT_MODEL, DEFAULT_LANGUAGE, WhisperTranscriber
 
 app = typer.Typer(help="Heard — 视频语音转录工具")
@@ -97,15 +97,13 @@ def summarize(
         raise typer.Exit(code=1)
 
     try:
-        summarizer = Summarizer()
-
         if batch:
             if not path.is_dir():
                 console.print("[red]错误[/red]: 批量模式需要指定目录")
                 raise typer.Exit(code=1)
 
             console.print(f"[bold]批量处理[/bold]: {path}")
-            paths = summarizer.summarize_batch(path, output_dir=output_dir)
+            paths = summarize_batch(path, output_dir=output_dir)
             console.print(f"\n[green]完成[/green] — 生成 {len(paths)} 个文件")
         else:
             if path.is_dir():
@@ -113,7 +111,7 @@ def summarize(
                 raise typer.Exit(code=1)
 
             console.print(f"[bold]处理[/bold]: {path.name}")
-            output = summarizer.summarize_single(path, output_dir=output_dir)
+            output = summarize_single(path, output_dir=output_dir)
             console.print(f"[green]完成[/green] → {output}")
 
     except (FileNotFoundError, ValueError) as exc:

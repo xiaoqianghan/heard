@@ -3,12 +3,8 @@
 import asyncio
 from pathlib import Path
 
-from rich.console import Console
-
 from heard.output import format_transcript_text, load_transcript
 from heard.transcriber import Transcript
-
-console = Console()
 
 SUMMARY_SYSTEM_PROMPT = """你是一个课程学习助手。根据视频转录文本，提取核心概念与关键词。
 
@@ -57,19 +53,13 @@ OVERVIEW_SYSTEM_PROMPT = """你是一个课程学习助手。根据一系列视�
 MAX_CHUNK_SIZE = 50000
 
 
-def _extract_text_from_transcript(transcript: Transcript) -> str:
-    """Convert transcript to plain text using existing paragraph grouping."""
+def _extract_text(transcript: Transcript) -> str:
     if not transcript.segments:
         return ""
     return format_transcript_text(transcript)
 
 
 def _chunk_text(text: str, max_size: int = MAX_CHUNK_SIZE) -> list[str]:
-    """Split text into chunks at paragraph boundaries, respecting max_size.
-
-    Note: Single paragraphs exceeding max_size will pass through unsplit,
-    since there is no paragraph boundary to split on within them.
-    """
     if not text:
         return []
     if len(text) <= max_size:
@@ -92,8 +82,7 @@ def _chunk_text(text: str, max_size: int = MAX_CHUNK_SIZE) -> list[str]:
     return chunks
 
 
-async def _call_claude_async(system_prompt: str, user_prompt: str) -> str:
-    """Call Claude via claude-code-sdk and return the result text."""
+async def _call_claude(system_prompt: str, user_prompt: str) -> str:
     from claude_code_sdk import ClaudeCodeOptions, ResultMessage, query
 
     options = ClaudeCodeOptions(
@@ -109,79 +98,75 @@ async def _call_claude_async(system_prompt: str, user_prompt: str) -> str:
     return result_text
 
 
-def _call_claude(system_prompt: str, user_prompt: str) -> str:
-    """Synchronous wrapper for _call_claude_async."""
-    return asyncio.run(_call_claude_async(system_prompt, user_prompt))
+async def _summarize_text(text: str) -> str:
+    chunks = _chunk_text(text)
+    if len(chunks) == 1:
+        return await _call_claude(SUMMARY_SYSTEM_PROMPT, chunks[0])
+    partials = await asyncio.gather(
+        *[_call_claude(SUMMARY_SYSTEM_PROMPT, ch) for ch in chunks]
+    )
+    merged = "以下是视频各部分的摘要，请合并为一份完整的摘要：\n\n" + "\n---\n".join(partials)
+    return await _call_claude(SUMMARY_SYSTEM_PROMPT, merged)
 
 
-class Summarizer:
-    """Summarize video transcripts using Claude."""
+async def _summarize_file(json_path: Path, output_dir: Path | None = None) -> tuple[Path, str]:
+    json_path = json_path.resolve()
+    if not json_path.exists():
+        raise FileNotFoundError(f"转录文件不存在: {json_path}")
 
-    def summarize_single(self, json_path: Path, output_dir: Path | None = None) -> Path:
-        """Summarize a single transcript JSON file."""
-        json_path = json_path.resolve()
-        if not json_path.exists():
-            raise FileNotFoundError(f"转录文件不存在: {json_path}")
+    transcript = load_transcript(json_path)
+    text = _extract_text(transcript)
+    if not text.strip():
+        raise ValueError(f"转录文件内容为空: {json_path}")
 
-        transcript = load_transcript(json_path)
-        text = _extract_text_from_transcript(transcript)
+    summary = await _summarize_text(text)
 
-        if not text.strip():
-            raise ValueError(f"转录文件内容为空: {json_path}")
+    if output_dir is None:
+        output_dir = json_path.parent / "summaries"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{json_path.stem}.summary.md"
+    output_path.write_text(summary, encoding="utf-8")
 
-        chunks = _chunk_text(text)
+    return output_path, summary
 
-        if len(chunks) == 1:
-            summary = _call_claude(SUMMARY_SYSTEM_PROMPT, chunks[0])
-        else:
-            partial_summaries = []
-            for chunk in chunks:
-                partial = _call_claude(SUMMARY_SYSTEM_PROMPT, chunk)
-                partial_summaries.append(partial)
-            merged_prompt = "以下是视频各部分的摘要，请合并为一份完整的摘要：\n\n" + "\n---\n".join(
-                partial_summaries
-            )
-            summary = _call_claude(SUMMARY_SYSTEM_PROMPT, merged_prompt)
 
-        if output_dir is None:
-            output_dir = json_path.parent / "summaries"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"{json_path.stem}.summary.md"
-        output_path.write_text(summary, encoding="utf-8")
+def summarize_single(json_path: Path, output_dir: Path | None = None) -> Path:
+    path, _ = asyncio.run(_summarize_file(json_path, output_dir))
+    return path
 
-        return output_path
 
-    def summarize_batch(self, directory: Path, output_dir: Path | None = None) -> list[Path]:
-        """Summarize all transcript JSON files in a directory."""
-        directory = directory.resolve()
-        if not directory.is_dir():
-            raise ValueError(f"目录不存在: {directory}")
+async def _summarize_batch_async(directory: Path, output_dir: Path | None = None) -> list[Path]:
+    directory = directory.resolve()
+    if not directory.is_dir():
+        raise ValueError(f"目录不存在: {directory}")
 
-        json_files = sorted(directory.glob("*.json"))
-        if not json_files:
-            raise ValueError(f"目录中没有 JSON 文件: {directory}")
+    json_files = sorted(directory.glob("*.json"))
+    if not json_files:
+        raise ValueError(f"目录中没有 JSON 文件: {directory}")
 
-        if output_dir is None:
-            output_dir = directory / "summaries"
+    if output_dir is None:
+        output_dir = directory / "summaries"
 
-        summary_paths = []
-        for json_file in json_files:
-            output = self.summarize_single(json_file, output_dir=output_dir)
-            summary_paths.append(output)
-            console.print(f"  [green]✓[/green] {json_file.name} → {output.name}")
+    results = await asyncio.gather(
+        *[_summarize_file(f, output_dir) for f in json_files]
+    )
 
-        # Generate course overview
-        overview_parts = []
-        for sp in summary_paths:
-            content = sp.read_text(encoding="utf-8")
-            filename = sp.stem.replace(".summary", "")
-            overview_parts.append(f"### {filename}\n\n{content}")
+    summary_paths = []
+    overview_parts = []
+    for path, text in results:
+        summary_paths.append(path)
+        filename = path.stem.replace(".summary", "")
+        overview_parts.append(f"### {filename}\n\n{text}")
 
-        overview_prompt = "以下是课程中各视频的摘要：\n\n" + "\n---\n".join(overview_parts)
-        overview = _call_claude(OVERVIEW_SYSTEM_PROMPT, overview_prompt)
+    overview_prompt = "以下是课程中各视频的摘要：\n\n" + "\n---\n".join(overview_parts)
+    overview = await _call_claude(OVERVIEW_SYSTEM_PROMPT, overview_prompt)
 
-        overview_path = output_dir / "course-overview.md"
-        overview_path.write_text(overview, encoding="utf-8")
-        summary_paths.append(overview_path)
+    overview_path = output_dir / "course-overview.md"
+    overview_path.write_text(overview, encoding="utf-8")
+    summary_paths.append(overview_path)
 
-        return summary_paths
+    return summary_paths
+
+
+def summarize_batch(directory: Path, output_dir: Path | None = None) -> list[Path]:
+    return asyncio.run(_summarize_batch_async(directory, output_dir))
