@@ -2,7 +2,25 @@
 name = "heard"
 version = "0.1.0"
 description = "Video speech-to-text transcription CLI tool"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
+authors = [
+    { name = "Xiaoqiang Han" },
+]
+keywords = ["whisper", "transcription", "speech-to-text", "video", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Multimedia :: Video",
+    "Typing :: Typed",
+]
 dependencies = [
     "typer>=0.15.0",
     "ffmpeg-python>=0.2.0",
@@ -10,8 +28,19 @@ dependencies = [
     "rich>=13.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/xiaoqianghan/heard"
+Repository = "https://github.com/xiaoqianghan/heard"
+Issues = "https://github.com/xiaoqianghan/heard/issues"
+Changelog = "https://github.com/xiaoqianghan/heard/blob/main/CHANGELOG.md"
+
 [project.scripts]
 heard = "heard.cli:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -22,8 +51,3 @@ packages = ["src/heard"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.3",
-]

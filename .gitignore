@@ -1,7 +1,45 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
 dist/
 build/
+*.egg
+
+# Virtual environments
 .venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Media files (avoid committing large files)
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+
+# Transcription output
+*.transcript.json

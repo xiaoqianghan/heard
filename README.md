@@ -1,45 +1,53 @@
 # Heard
 
-视频语音转录 CLI 工具。从本地视频文件中提取语音并转录为结构化 JSON 文本，方便后续 AI 总结和学习计划生成。
+A CLI tool for transcribing speech from video files into structured JSON text, designed for subsequent AI summarization and study plan generation.
 
-## 安装
+[中文文档](#中文说明)
 
-需要先安装 FFmpeg：
+---
+
+## Installation
+
+Requires [FFmpeg](https://ffmpeg.org/) to be installed:
 
 ```bash
+# macOS
 brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
 ```
 
-克隆并安装项目：
+Clone and set up:
 
 ```bash
-git clone <repo-url> && cd heard
+git clone https://github.com/xiaoqianghan/heard.git && cd heard
 uv sync
 ```
 
-## 使用
+## Usage
 
 ```bash
-# 转录视频（默认输出到同目录 .json 文件）
+# Transcribe a video (outputs JSON in the same directory by default)
 heard transcribe video.mp4
 
-# 指定输出路径
+# Specify output path
 heard transcribe video.mp4 -o result.json
 
-# 切换模型
+# Choose a model
 heard transcribe video.mp4 --model medium
 heard transcribe video.mp4 --model large-v3-turbo
 
-# 导出为纯文本（用于 AI 总结、学习计划等）
+# Export as plain text (for AI summarization, study plans, etc.)
 heard export transcript.json
 
-# 指定输出路径
+# Specify output path
 heard export transcript.json -o output.txt
 ```
 
-## 输出格式
+## Output Formats
 
-### JSON（transcribe 默认输出）
+### JSON (default from `transcribe`)
 
 ```json
 {
@@ -59,33 +67,71 @@ heard export transcript.json -o output.txt
 }
 ```
 
-### 纯文本（export 输出）
+### Plain Text (from `export`)
 
 ```
 # lesson01.mp4
 
-时长: 60分0秒 | 语言: zh | 模型: large-v3-turbo
+Duration: 60m0s | Language: zh | Model: large-v3-turbo
 
 ---
 
 今天我们来学习 Python 的基础语法...
 
-[按停顿自动分段，适合喂给 AI 做总结和学习计划]
+[Auto-segmented by pauses, ready for AI summarization and study plans]
 ```
 
-## 开发
+## Development
 
 ```bash
-uv sync                      # 安装依赖（含开发依赖）
-uv run pytest -v             # 运行测试
-uv run heard transcribe --help  # 查看 CLI 帮助
+uv sync                          # Install dependencies (including dev)
+uv run pytest -v                 # Run tests
+uv run heard transcribe --help   # CLI help
 ```
 
-## 支持的视频格式
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## Supported Video Formats
 
 mp4, mkv, avi, mov, wmv, flv, webm, m4v
 
-## 技术栈
+## Tech Stack
+
+- Python + Typer (CLI)
+- ffmpeg-python (audio extraction)
+- faster-whisper (speech transcription, CTranslate2 backend)
+- Rich (progress bars)
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+<a id="中文说明"></a>
+
+## 中文说明
+
+视频语音转录 CLI 工具。从本地视频文件中提取语音并转录为结构化 JSON 文本，方便后续 AI 总结和学习计划生成。
+
+### 安装
+
+```bash
+brew install ffmpeg
+git clone https://github.com/xiaoqianghan/heard.git && cd heard
+uv sync
+```
+
+### 使用
+
+```bash
+heard transcribe video.mp4              # 转录视频
+heard transcribe video.mp4 -o result.json  # 指定输出路径
+heard transcribe video.mp4 --model medium  # 切换模型
+heard export transcript.json             # 导出为纯文本
+```
+
+### 技术栈
 
 - Python + Typer (CLI)
 - ffmpeg-python (音频提取)
