@@ -18,7 +18,7 @@ class TestWriteTranscript:
         write_transcript(t, output_path)
 
         assert output_path.exists()
-        with open(output_path) as f:
+        with open(output_path, encoding="utf-8") as f:
             data = json.load(f)
         assert data["video"] == "test.mp4"
         assert data["segments"][0]["text"] == "你好"

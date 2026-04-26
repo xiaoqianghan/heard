@@ -42,13 +42,13 @@ class TestExtractAudio:
         import subprocess
         monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
 
-        def mock_ffmpeg_input(filename):
+        def mock_ffmpeg_input(_filename):
             class MockOutput:
-                def output(self, out_path, **kwargs):
+                def output(self, out_path, **_kwargs):
                     class MockRun:
                         def overwrite_output(self):
                             return self
-                        def run(self, capture_stderr=True):
+                        def run(self, capture_stderr=True):  # pylint: disable=unused-argument
                             # Simulate creating the wav file
                             Path(out_path).write_bytes(b"RIFF" + b"\x00" * 100)
                             return (None, None)

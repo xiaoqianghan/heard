@@ -14,10 +14,10 @@ def check_ffmpeg() -> None:
             capture_output=True,
             check=True,
         )
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         raise RuntimeError(
             "ffmpeg is not installed. Install it with: brew install ffmpeg"
-        )
+        ) from exc
 
 
 def extract_audio(video_path: Path) -> Path:
@@ -32,9 +32,8 @@ def extract_audio(video_path: Path) -> Path:
 
     check_ffmpeg()
 
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    tmp.close()
-    wav_path = Path(tmp.name)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        wav_path = Path(tmp.name)
 
     try:
         (

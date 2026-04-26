@@ -1,11 +1,9 @@
-import json
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, patch
-from pathlib import Path
 
 from heard.summarizer import (
-    _call_claude,
     _chunk_text,
     _extract_text,
     summarize_single,
@@ -50,7 +48,7 @@ class TestChunkText:
 
     def test_empty_text(self):
         result = _chunk_text("", max_size=50000)
-        assert result == []
+        assert not result
 
 
 class TestSummarizeSingle:
@@ -92,7 +90,7 @@ class TestSummarizeSingle:
 
         with patch("heard.summarizer._call_claude", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = "# mock summary"
-            output = summarize_single(json_path, output_dir=tmp_path)
+            summarize_single(json_path, output_dir=tmp_path)
 
         mock_call.assert_called_once()
         call_args = mock_call.call_args[0][1]  # user_prompt is the second positional arg

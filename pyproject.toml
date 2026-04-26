@@ -54,3 +54,49 @@ packages = ["src/heard"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pylint>=4.0.5",
+]
+
+[tool.pylint.main]
+source-roots = ["src"]
+jobs = 0
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "v", "e", "x", "f", "_", "T"]
+const-rgx = "(([A-Z_][A-Z0-9_]*)|(__.*__)|([a-z_][a-z0-9_]*))$"
+class-attribute-rgx = "([A-Za-z_][A-Za-z0-9_]{1,30})$"
+
+[tool.pylint.design]
+min-public-methods = 1
+max-module-lines = 500
+
+[tool.pylint.format]
+max-line-length = 120
+indent-string = "    "
+max-statements = 60
+
+[tool.pylint.message-control]
+disable = [
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "fixme",
+    "line-too-long",
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+]
+
+[tool.pylint.typecheck]
+generated-members = ["ffmpeg.*"]
+
+[tool.pylint.imports]
+allow-reexport-from-package = true
+
+[tool.pylint.variables]
+ignored-argument-names = "_.*"

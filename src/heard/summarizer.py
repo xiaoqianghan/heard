@@ -83,7 +83,7 @@ def _chunk_text(text: str, max_size: int = MAX_CHUNK_SIZE) -> list[str]:
 
 
 async def _call_claude(system_prompt: str, user_prompt: str) -> str:
-    from claude_code_sdk import ClaudeCodeOptions, ResultMessage, query
+    from claude_code_sdk import ClaudeCodeOptions, ResultMessage, query  # pylint: disable=import-outside-toplevel
 
     options = ClaudeCodeOptions(
         allowed_tools=[],

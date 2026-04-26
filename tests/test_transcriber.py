@@ -1,7 +1,4 @@
 from dataclasses import asdict
-from pathlib import Path
-
-import pytest
 
 from heard.transcriber import Segment, Transcript, WhisperTranscriber, DEFAULT_MODEL, DEFAULT_LANGUAGE
 
@@ -69,7 +66,7 @@ class TestWhisperTranscriber:
             duration_after_vad = 8.0
 
         class FakeModel:
-            def transcribe(self, audio_path, **kwargs):
+            def transcribe(self, _audio_path, **_kwargs):
                 return (
                     iter([
                         FakeSegment(0.0, 4.2, "你好世界", -0.2),
@@ -79,7 +76,7 @@ class TestWhisperTranscriber:
                 )
 
         import faster_whisper
-        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *a, **k: FakeModel())
+        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *_a, **_k: FakeModel())
 
         transcriber = WhisperTranscriber(model="large-v3-turbo")
         result = transcriber.transcribe(audio_path, video_name="test.mp4")
@@ -118,14 +115,14 @@ class TestWhisperTranscriber:
             duration_after_vad = 5.0
 
         class FakeModel:
-            def transcribe(self, audio_path, **kwargs):
+            def transcribe(self, _audio_path, **_kwargs):
                 return (
                     iter([FakeSegment(0.0, 5.0, "test", -2.5)]),
                     FakeInfo(),
                 )
 
         import faster_whisper
-        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *a, **k: FakeModel())
+        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *_a, **_k: FakeModel())
 
         transcriber = WhisperTranscriber()
         result = transcriber.transcribe(audio_path, video_name="test.mp4")
