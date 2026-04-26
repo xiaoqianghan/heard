@@ -36,16 +36,21 @@ def extract_audio(video_path: Path) -> Path:
     tmp.close()
     wav_path = Path(tmp.name)
 
-    (
-        ffmpeg.input(str(video_path))
-        .output(
-            str(wav_path),
-            acodec="pcm_s16le",
-            ac=1,
-            ar="16k",
+    try:
+        (
+            ffmpeg.input(str(video_path))
+            .output(
+                str(wav_path),
+                acodec="pcm_s16le",
+                ac=1,
+                ar="16k",
+            )
+            .overwrite_output()
+            .run(capture_stderr=True)
         )
-        .overwrite_output()
-        .run(capture_stderr=True)
-    )
+    except ffmpeg.Error as e:
+        wav_path.unlink(missing_ok=True)
+        stderr = e.stderr.decode(errors="replace") if e.stderr else str(e)
+        raise RuntimeError(f"ffmpeg failed: {stderr}") from e
 
     return wav_path

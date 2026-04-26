@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from heard.transcriber import Segment, Transcript, WhisperTranscriber
+from heard.transcriber import Segment, Transcript, WhisperTranscriber, DEFAULT_MODEL, DEFAULT_LANGUAGE
 
 
 class TestSegment:
@@ -78,11 +78,7 @@ class TestWhisperTranscriber:
                     FakeInfo(),
                 )
 
-        def mock_whisper_model(model_size, **kwargs):
-            return FakeModel()
-
         import faster_whisper
-        monkeypatch.setattr(faster_whisper.WhisperModel, "__init__", lambda self, *a, **k: None)
         monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *a, **k: FakeModel())
 
         transcriber = WhisperTranscriber(model="large-v3-turbo")
@@ -95,6 +91,42 @@ class TestWhisperTranscriber:
         assert result.segments[0].text == "你好世界"
         assert result.segments[1].text == "测试转录"
 
-    def test_default_model_is_large_v3_turbo(self):
+    def test_default_model(self):
         transcriber = WhisperTranscriber()
-        assert transcriber.model == "large-v3-turbo"
+        assert transcriber.model == DEFAULT_MODEL
+
+    def test_default_language(self):
+        transcriber = WhisperTranscriber()
+        assert transcriber.language == DEFAULT_LANGUAGE
+
+    def test_confidence_clamped_to_zero(self, tmp_path, monkeypatch):
+        audio_path = tmp_path / "audio.wav"
+        audio_path.write_bytes(b"\x00" * 100)
+
+        class FakeSegment:
+            def __init__(self, start, end, text, avg_logprob):
+                self.start = start
+                self.end = end
+                self.text = text
+                self.avg_logprob = avg_logprob
+                self.no_speech_prob = 0.5
+
+        class FakeInfo:
+            language = "zh"
+            language_probability = 0.98
+            duration = 5.0
+            duration_after_vad = 5.0
+
+        class FakeModel:
+            def transcribe(self, audio_path, **kwargs):
+                return (
+                    iter([FakeSegment(0.0, 5.0, "test", -2.5)]),
+                    FakeInfo(),
+                )
+
+        import faster_whisper
+        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *a, **k: FakeModel())
+
+        transcriber = WhisperTranscriber()
+        result = transcriber.transcribe(audio_path, video_name="test.mp4")
+        assert result.segments[0].confidence == 0.0

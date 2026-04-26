@@ -3,6 +3,9 @@ from pathlib import Path
 
 import faster_whisper
 
+DEFAULT_MODEL = "large-v3-turbo"
+DEFAULT_LANGUAGE = "zh"
+
 
 @dataclass
 class Segment:
@@ -23,24 +26,30 @@ class Transcript:
 
 
 class WhisperTranscriber:
-    def __init__(self, model: str = "large-v3-turbo"):
+    def __init__(self, model: str = DEFAULT_MODEL, language: str = DEFAULT_LANGUAGE):
         self.model = model
+        self.language = language
+        self._model: faster_whisper.WhisperModel | None = None
+
+    @property
+    def whisper(self) -> faster_whisper.WhisperModel:
+        if self._model is None:
+            self._model = faster_whisper.WhisperModel(self.model, device="auto", compute_type="int8")
+        return self._model
 
     def transcribe(self, audio_path: Path, video_name: str = "") -> Transcript:
-        whisper = faster_whisper.WhisperModel(self.model, device="auto", compute_type="int8")
-
-        segments_iter, info = whisper.transcribe(
+        segments_iter, info = self.whisper.transcribe(
             str(audio_path),
-            language="zh",
+            language=self.language,
             beam_size=5,
             vad_filter=True,
         )
 
         segments = []
-        for seg in segments_iter:
-            confidence = round(1.0 - abs(seg.avg_logprob), 2)
+        for i, seg in enumerate(segments_iter):
+            confidence = max(0.0, round(1.0 - abs(seg.avg_logprob), 2))
             segments.append(Segment(
-                id=len(segments),
+                id=i,
                 start=round(seg.start, 2),
                 end=round(seg.end, 2),
                 text=seg.text.strip(),
