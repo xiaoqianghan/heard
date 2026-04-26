@@ -7,6 +7,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from heard.audio import extract_audio
 from heard.output import write_transcript, format_transcript_text, load_transcript
+from heard.summarizer import Summarizer
 from heard.transcriber import DEFAULT_MODEL, DEFAULT_LANGUAGE, WhisperTranscriber
 
 app = typer.Typer(help="Heard — 视频语音转录工具")
@@ -80,6 +81,44 @@ def export(
     output.write_text(text, encoding="utf-8")
 
     console.print(f"[green]导出完成[/green] — {len(transcript.segments)} 个片段 → {output}")
+
+
+@app.command()
+def summarize(
+    path: Annotated[Path, typer.Argument(help="转录 JSON 文件路径或目录")],
+    output_dir: Annotated[Path | None, typer.Option("--output-dir", "-o", help="输出目录")] = None,
+    batch: Annotated[bool, typer.Option("--batch", "-b", help="批量处理目录下所有 JSON 文件")] = False,
+) -> None:
+    """使用 Claude 从转录中提取核心概念与关键词。"""
+    path = path.resolve()
+
+    if not path.exists():
+        console.print(f"[red]错误[/red]: 路径不存在 — {path}")
+        raise typer.Exit(code=1)
+
+    try:
+        summarizer = Summarizer()
+
+        if batch:
+            if not path.is_dir():
+                console.print("[red]错误[/red]: 批量模式需要指定目录")
+                raise typer.Exit(code=1)
+
+            console.print(f"[bold]批量处理[/bold]: {path}")
+            paths = summarizer.summarize_batch(path, output_dir=output_dir)
+            console.print(f"\n[green]完成[/green] — 生成 {len(paths)} 个文件")
+        else:
+            if path.is_dir():
+                console.print("[red]错误[/red]: 单文件模式需要指定 .json 文件（目录请使用 --batch）")
+                raise typer.Exit(code=1)
+
+            console.print(f"[bold]处理[/bold]: {path.name}")
+            output = summarizer.summarize_single(path, output_dir=output_dir)
+            console.print(f"[green]完成[/green] → {output}")
+
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]错误[/red]: {exc}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

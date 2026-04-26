@@ -70,3 +70,21 @@ class TestSuccessfulTranscription:
             data = json.loads(output_file.read_text())
             assert data["video"] == "video.mp4"
             assert data["segments"][0]["text"] == "你好世界"
+
+
+class TestSummarizeCommand:
+    def test_help_shows_options(self):
+        result = runner.invoke(app, ["summarize", "--help"])
+        assert result.exit_code == 0
+        assert "--output-dir" in result.output
+        assert "--batch" in result.output
+
+    def test_shows_error_when_file_not_found(self):
+        result = runner.invoke(app, ["summarize", "/nonexistent/file.json"])
+        assert result.exit_code != 0
+
+    def test_batch_shows_error_on_empty_directory(self, tmp_path):
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        result = runner.invoke(app, ["summarize", str(empty), "--batch"])
+        assert result.exit_code != 0
