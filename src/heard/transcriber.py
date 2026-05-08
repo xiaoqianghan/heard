@@ -4,7 +4,7 @@ from pathlib import Path
 import mlx_whisper
 
 DEFAULT_MODEL = "mlx-community/whisper-large-v3-turbo"
-DEFAULT_LANGUAGE = "zh"
+DEFAULT_LANGUAGE = None
 
 
 @dataclass
@@ -26,7 +26,7 @@ class Transcript:
 
 
 class WhisperTranscriber:
-    def __init__(self, model: str = DEFAULT_MODEL, language: str = DEFAULT_LANGUAGE):
+    def __init__(self, model: str = DEFAULT_MODEL, language: str | None = DEFAULT_LANGUAGE):
         self.model = model
         self.language = language
 

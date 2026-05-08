@@ -10,7 +10,11 @@ from heard.output import write_transcript, format_transcript_text, load_transcri
 from heard.summarizer import summarize_single, summarize_batch
 from heard.transcriber import DEFAULT_MODEL, DEFAULT_LANGUAGE, WhisperTranscriber
 
-app = typer.Typer(help="Heard — Video speech transcription tool")
+app = typer.Typer(
+    help="Heard — Extract speech from video and transcribe to text.\n\n"
+    "Supports MP4, MKV, AVI and other formats via FFmpeg. "
+    "Language is auto-detected by default; use --language to override."
+)
 console = Console()
 
 
@@ -21,11 +25,33 @@ def main() -> None:
 
 @app.command()
 def transcribe(
-    video: Annotated[Path, typer.Argument(help="Path to the video file")],
-    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output JSON file path")] = None,
-    model: Annotated[str, typer.Option("--model", "-m", help="Whisper model name")] = DEFAULT_MODEL,
-    language: Annotated[str, typer.Option("--language", "-l", help="Transcription language")] = DEFAULT_LANGUAGE,
+    video: Annotated[Path, typer.Argument(
+        help="Path to the video file (e.g. mp4, mkv, avi)"
+    )],
+    output: Annotated[Path | None, typer.Option(
+        "--output", "-o",
+        help="Output JSON file path. Defaults to <video_name>.json"
+    )] = None,
+    model: Annotated[str, typer.Option(
+        "--model", "-m",
+        help="Whisper model to use (e.g. mlx-community/whisper-large-v3-turbo)"
+    )] = DEFAULT_MODEL,
+    language: Annotated[str | None, typer.Option(
+        "--language", "-l",
+        help="Language code for transcription (e.g. en, zh, ja). "
+             "Omit to let Whisper auto-detect the spoken language."
+    )] = DEFAULT_LANGUAGE,
 ) -> None:
+    """Transcribe speech in a video file to timestamped JSON.
+
+    Examples:
+
+        heard transcribe lecture.mp4
+
+        heard transcribe interview.mp4 -l en -o result.json
+
+        heard transcribe podcast.mkv -m mlx-community/whisper-large-v3-turbo
+    """
     video = video.resolve()
 
     if output is None:
@@ -61,9 +87,23 @@ def transcribe(
 
 @app.command()
 def export(
-    json_file: Annotated[Path, typer.Argument(help="Path to the transcript JSON file")],
-    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output file path")] = None,
+    json_file: Annotated[Path, typer.Argument(
+        help="Path to the transcript JSON file produced by 'transcribe'"
+    )],
+    output: Annotated[Path | None, typer.Option(
+        "--output", "-o",
+        help="Output text file path. Defaults to <json_file>.txt"
+    )] = None,
 ) -> None:
+    """Export a transcript JSON to a plain-text file.
+
+    Converts the timestamped JSON output into a readable text file
+    with one segment per line.
+
+    Example:
+
+        heard export lecture.json -o lecture.txt
+    """
     json_file = json_file.resolve()
 
     if not json_file.exists():
@@ -85,11 +125,29 @@ def export(
 
 @app.command()
 def summarize(
-    path: Annotated[Path, typer.Argument(help="Path to a transcript JSON file or directory")],
-    output_dir: Annotated[Path | None, typer.Option("--output-dir", "-o", help="Output directory")] = None,
-    batch: Annotated[bool, typer.Option("--batch", "-b", help="Batch process all JSON files in directory")] = False,
+    path: Annotated[Path, typer.Argument(
+        help="Path to a transcript JSON file, or a directory for batch mode"
+    )],
+    output_dir: Annotated[Path | None, typer.Option(
+        "--output-dir", "-o",
+        help="Output directory for summary files"
+    )] = None,
+    batch: Annotated[bool, typer.Option(
+        "--batch", "-b",
+        help="Batch process all JSON files in the given directory"
+    )] = False,
 ) -> None:
-    """Extract core concepts and keywords from transcripts using Claude."""
+    """Summarize transcript(s) using Claude.
+
+    Extracts core concepts, keywords, and a structured summary from
+    transcription JSON files via the Claude API.
+
+    Examples:
+
+        heard summarize lecture.json
+
+        heard summarize ./transcripts/ --batch
+    """
     path = path.resolve()
 
     if not path.exists():
