@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import faster_whisper
+import mlx_whisper
 
-DEFAULT_MODEL = "large-v3-turbo"
+DEFAULT_MODEL = "mlx-community/whisper-large-v3-turbo"
 DEFAULT_LANGUAGE = "zh"
 
 
@@ -29,37 +29,30 @@ class WhisperTranscriber:
     def __init__(self, model: str = DEFAULT_MODEL, language: str = DEFAULT_LANGUAGE):
         self.model = model
         self.language = language
-        self._model: faster_whisper.WhisperModel | None = None
-
-    @property
-    def whisper(self) -> faster_whisper.WhisperModel:
-        if self._model is None:
-            self._model = faster_whisper.WhisperModel(self.model, device="auto", compute_type="int8")
-        return self._model
 
     def transcribe(self, audio_path: Path, video_name: str = "") -> Transcript:
-        segments_iter, info = self.whisper.transcribe(
+        result = mlx_whisper.transcribe(
             str(audio_path),
+            path_or_hf_repo=self.model,
             language=self.language,
-            beam_size=5,
-            vad_filter=True,
         )
 
         segments = []
-        for i, seg in enumerate(segments_iter):
-            confidence = max(0.0, round(1.0 - abs(seg.avg_logprob), 2))
+        for i, seg in enumerate(result["segments"]):
+            avg_logprob = seg.get("avg_logprob", 0.0)
+            confidence = max(0.0, round(1.0 - abs(avg_logprob), 2))
             segments.append(Segment(
                 id=i,
-                start=round(seg.start, 2),
-                end=round(seg.end, 2),
-                text=seg.text.strip(),
+                start=round(seg["start"], 2),
+                end=round(seg["end"], 2),
+                text=seg["text"].strip(),
                 confidence=confidence,
             ))
 
         return Transcript(
             video=video_name,
-            duration=round(info.duration, 2),
-            language=info.language,
+            duration=round(result.get("duration", segments[-1].end if segments else 0.0), 2),
+            language=result.get("language", self.language),
             model=self.model,
             segments=segments,
         )

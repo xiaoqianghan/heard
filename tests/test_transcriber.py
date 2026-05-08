@@ -25,7 +25,7 @@ class TestTranscript:
             video="test.mp4",
             duration=8.5,
             language="zh",
-            model="large-v3-turbo",
+            model="mlx-community/whisper-large-v3-turbo",
             segments=[seg],
         )
         assert t.video == "test.mp4"
@@ -38,7 +38,7 @@ class TestTranscript:
             video="test.mp4",
             duration=8.5,
             language="zh",
-            model="large-v3-turbo",
+            model="mlx-community/whisper-large-v3-turbo",
             segments=[seg],
         )
         d = asdict(t)
@@ -51,34 +51,20 @@ class TestWhisperTranscriber:
         audio_path = tmp_path / "audio.wav"
         audio_path.write_bytes(b"\x00" * 100)
 
-        class FakeSegment:
-            def __init__(self, start, end, text, avg_logprob):
-                self.start = start
-                self.end = end
-                self.text = text
-                self.avg_logprob = avg_logprob
-                self.no_speech_prob = 0.01
+        fake_result = {
+            "text": "你好世界测试转录",
+            "segments": [
+                {"start": 0.0, "end": 4.2, "text": "你好世界", "avg_logprob": -0.2},
+                {"start": 4.2, "end": 8.5, "text": "测试转录", "avg_logprob": -0.3},
+            ],
+            "language": "zh",
+            "duration": 8.5,
+        }
 
-        class FakeInfo:
-            language = "zh"
-            language_probability = 0.98
-            duration = 8.5
-            duration_after_vad = 8.0
+        import mlx_whisper
+        monkeypatch.setattr(mlx_whisper, "transcribe", lambda *a, **k: fake_result)
 
-        class FakeModel:
-            def transcribe(self, _audio_path, **_kwargs):
-                return (
-                    iter([
-                        FakeSegment(0.0, 4.2, "你好世界", -0.2),
-                        FakeSegment(4.2, 8.5, "测试转录", -0.3),
-                    ]),
-                    FakeInfo(),
-                )
-
-        import faster_whisper
-        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *_a, **_k: FakeModel())
-
-        transcriber = WhisperTranscriber(model="large-v3-turbo")
+        transcriber = WhisperTranscriber()
         result = transcriber.transcribe(audio_path, video_name="test.mp4")
 
         assert isinstance(result, Transcript)
@@ -100,29 +86,17 @@ class TestWhisperTranscriber:
         audio_path = tmp_path / "audio.wav"
         audio_path.write_bytes(b"\x00" * 100)
 
-        class FakeSegment:
-            def __init__(self, start, end, text, avg_logprob):
-                self.start = start
-                self.end = end
-                self.text = text
-                self.avg_logprob = avg_logprob
-                self.no_speech_prob = 0.5
+        fake_result = {
+            "text": "test",
+            "segments": [
+                {"start": 0.0, "end": 5.0, "text": "test", "avg_logprob": -2.5},
+            ],
+            "language": "zh",
+            "duration": 5.0,
+        }
 
-        class FakeInfo:
-            language = "zh"
-            language_probability = 0.98
-            duration = 5.0
-            duration_after_vad = 5.0
-
-        class FakeModel:
-            def transcribe(self, _audio_path, **_kwargs):
-                return (
-                    iter([FakeSegment(0.0, 5.0, "test", -2.5)]),
-                    FakeInfo(),
-                )
-
-        import faster_whisper
-        monkeypatch.setattr(faster_whisper, "WhisperModel", lambda *_a, **_k: FakeModel())
+        import mlx_whisper
+        monkeypatch.setattr(mlx_whisper, "transcribe", lambda *a, **k: fake_result)
 
         transcriber = WhisperTranscriber()
         result = transcriber.transcribe(audio_path, video_name="test.mp4")

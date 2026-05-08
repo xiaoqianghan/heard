@@ -24,7 +24,7 @@ classifiers = [
 dependencies = [
     "typer>=0.15.0",
     "ffmpeg-python>=0.2.0",
-    "faster-whisper>=1.1.0",
+    "mlx-whisper>=0.4.0",
     "rich>=13.0.0",
 ]
 
